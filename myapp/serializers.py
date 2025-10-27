@@ -127,5 +127,34 @@ class LoanScheduleSerializer(serializers.ModelSerializer):
             'interest_amount',
             'total_due',
             'remaining_principal',
+            'assigned_to',
         ]
         read_only_fields = ['id', 'loan']
+# serializers.py
+
+from rest_framework import serializers
+from .models import LoanSchedule, CustomUser
+
+class LoanScheduleAssignSerializer(serializers.ModelSerializer):
+    assigned_to_id = serializers.PrimaryKeyRelatedField(
+        queryset=CustomUser.objects.filter(role='collection_agent'),
+        source='assigned_to',
+        write_only=True
+    )
+
+    class Meta:
+        model = LoanSchedule
+        fields = ['id', 'assigned_to_id']
+
+    def update(self, instance, validated_data):
+        assigned_agent = validated_data.get('assigned_to')
+        instance.assigned_to = assigned_agent
+        instance.save()
+        return instance
+from rest_framework import serializers
+from .models import CustomUser
+
+class UserSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomUser
+        fields = ['id', 'email', 'username', 'role']
