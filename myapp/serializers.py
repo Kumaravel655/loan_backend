@@ -86,11 +86,19 @@ class LoanSerializer(serializers.ModelSerializer):
         return loan
 
 
+from rest_framework import serializers
+from .models import LoanDue
 
 class LoanDueSerializer(serializers.ModelSerializer):
     class Meta:
         model = LoanDue
         fields = '__all__'
+        read_only_fields = ['due_id', 'paid_at']
+
+    def create(self, validated_data):
+        from django.utils import timezone
+        validated_data['paid_at'] = timezone.now()
+        return super().create(validated_data)
 
 
 class DailyCollectionSerializer(serializers.ModelSerializer):
@@ -128,6 +136,7 @@ class LoanScheduleSerializer(serializers.ModelSerializer):
             'total_due',
             'remaining_principal',
             'assigned_to',
+            'status',
         ]
         read_only_fields = ['id', 'loan']
 # serializers.py

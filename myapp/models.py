@@ -187,6 +187,10 @@ class Notification(models.Model):
         return f"Notification for User {self.user_id}"
 from django.conf import settings
 class LoanSchedule(models.Model):
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('done', 'Done'),
+    ]
     loan = models.ForeignKey('Loan', on_delete=models.CASCADE, related_name='schedules')
     installment_no = models.PositiveIntegerField()
     due_date = models.DateField()
@@ -194,7 +198,7 @@ class LoanSchedule(models.Model):
     interest_amount = models.DecimalField(max_digits=12, decimal_places=2)
     total_due = models.DecimalField(max_digits=12, decimal_places=2)
     remaining_principal = models.DecimalField(max_digits=12, decimal_places=2)
-
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
     assigned_to = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -203,6 +207,8 @@ class LoanSchedule(models.Model):
         limit_choices_to={'role': 'collection_agent'},
         related_name='assigned_schedules'
     )
+      # ✅ New field
+
 
     class Meta:
         db_table = 'loan_schedule'

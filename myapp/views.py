@@ -150,6 +150,7 @@ from .serializers import LoanScheduleSerializer
 class LoanScheduleListAPIView(generics.ListAPIView):
     queryset = LoanSchedule.objects.all()
     serializer_class = LoanScheduleSerializer
+    
 
 # Fetch schedules for a specific loan
 class LoanScheduleByLoanAPIView(generics.ListAPIView):
@@ -182,16 +183,62 @@ def list_collection_agents(request):
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from .models import LoanSchedule
+from .models import LoanSchedule, LoanDue, Notification
 from .serializers import LoanScheduleSerializer
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 
 User = get_user_model()
 
 class LoanScheduleViewSet(viewsets.ModelViewSet):
     queryset = LoanSchedule.objects.all()
     serializer_class = LoanScheduleSerializer
+    @action(detail=True, methods=['post'], url_path='collect')
+    def collect_payment(self, request, pk=None):
+        """
+        Agent collects payment for this loan schedule.
+        Creates or updates a LoanDue record.
+        """
+        schedule = self.get_object()
+        agent_id = request.user.id
 
+        # Extract payment info
+        payment_method = request.data.get('payment_method', 'cash')
+        paid_amount = request.data.get('paid_amount', schedule.total_due)
+
+        # Check if a due already exists
+        due, created = LoanDue.objects.get_or_create(
+            loan=schedule.loan,
+            due_number=schedule.installment_no,
+            defaults={
+                'due_date': schedule.due_date,
+                'due_amount': schedule.total_due,
+                'paid_amount': paid_amount,
+                'payment_method': payment_method,
+                'collected_by': agent_id,
+                'payment_status': 'paid',
+                'paid_at': timezone.now(),
+            }
+        )
+
+        if not created:
+            # Update existing record if it already exists
+            due.paid_amount = paid_amount
+            due.payment_method = payment_method
+            due.collected_by = agent_id
+            due.payment_status = 'paid'
+            due.paid_at = timezone.now()
+            due.save()
+
+        # Optionally update LoanSchedule status
+        schedule.status = 'Paid'
+        schedule.save()
+
+        return Response({
+            "message": "✅ Payment collected successfully!",
+            "loan_due": LoanDueSerializer(due).data
+        }, status=status.HTTP_200_OK)
+    
     @action(detail=True, methods=['post'])
     def assign(self, request, pk=None):
         try:
@@ -208,6 +255,7 @@ class LoanScheduleViewSet(viewsets.ModelViewSet):
 
             schedule.assigned_to = assigned_user
             schedule.save()
+           
 
             return Response(
                 {"message": f"Loan schedule {pk} successfully assigned to {assigned_user.email}"},
@@ -283,6 +331,12 @@ def assign_loan_schedule(request, pk):
             },
             status=status.HTTP_200_OK
         )
+    Notification.objects.create(
+        user_id=assigned_user.id,
+        title="New Loan Assigned",
+        message=f"You have been assigned Loan ID #{schedule.loan.id}, Installment #{schedule.installment_no}.",
+        created_at=timezone.now(),
+    )
 
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 # views.py

@@ -4,7 +4,7 @@ from .views import (
     SignupView, LoginView, LogoutView, ChangePasswordView,
     CustomerViewSet, LoanTypeViewSet, LoanViewSet,
     LoanDueViewSet, DailyCollectionViewSet,
-    AttendanceViewSet, NotificationViewSet,assign_loan_schedule,list_collection_agents,LoanScheduleUpdateView
+    AttendanceViewSet, NotificationViewSet,assign_loan_schedule,list_collection_agents,LoanScheduleUpdateView, LoanScheduleViewSet
 )
 from .views import LoanScheduleListAPIView, LoanScheduleByLoanAPIView
 # Initialize router
@@ -16,6 +16,8 @@ router.register(r'loan-dues', LoanDueViewSet)
 router.register(r'daily-collections', DailyCollectionViewSet)
 router.register(r'attendance', AttendanceViewSet)
 router.register(r'notifications', NotificationViewSet)
+router.register(r'loan-schedules', LoanScheduleViewSet, basename='loan-schedules')
+
 
 # Combine all URL patterns
 urlpatterns = [
